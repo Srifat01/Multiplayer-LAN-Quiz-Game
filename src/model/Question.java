@@ -9,11 +9,11 @@ public class Question {
     {
           if(options == null || options.length != 4)
             {
-                throw new IllegalArgumentException("Questions must have exact 4 options, no more.");
+                throw new IllegalArgumentException("Questions must have exact 4 options, no more.\n");
             }
           if(AnsIndex < 0 || AnsIndex > 3)
             {
-                throw new IllegalArgumentException("Index must be 0, 1, 2, or 3.");
+                throw new IllegalArgumentException("Index must be 0, 1, 2, or 3.\n");
             }
             this.sentence = sentence;   
             this.options = options;
@@ -27,17 +27,17 @@ public class Question {
     {
         return options;
     }
-    public int getAnsInd()
+    public int getAnsIndex()
     {
         return AnsIndex;
     }
 
-    public String getAnsIndex()
+    public String getAnswer()
     {
         return options[AnsIndex];
     }
 
-    public boolean correct(int ansIndex)
+    public boolean Iscorrect(int ansIndex)
     {
         return ansIndex == AnsIndex;
     }
@@ -46,20 +46,12 @@ public class Question {
     @Override
     public String toString()
     {
-           StringBuilder ob = new StringBuilder();
-           ob.append(sentence).append("  ");
-           char opt = 'A';
-           for(int i = 0; i<options.length; i++)
-           {
-            ob.append(opt++).append(") ").append(options[i]);
-           
-           if(i == AnsIndex)
-           {
-            ob.append("<-:3> correct");
-           }
-        }
-           ob.append("  ");
-           return ob.toString();
-    }
+        String answerCorrect = sentence + "\n";
 
-}
+        for(int i = 0; i < options.length; i++)
+        {
+            answerCorrect = answerCorrect + (char)('A'+i)+ ") "+options[i]+ "\n";
+        }
+        return answerCorrect;
+    }
+}   
