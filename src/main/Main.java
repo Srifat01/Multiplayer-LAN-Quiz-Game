@@ -29,8 +29,8 @@ public class Main {
             System.out.println("After reset the score: "+ob1);
 
             System.out.println("Test Questions ");
-            String[] opt1 = {"3000", "33", "8000", "12"};
-            Question q1 = new Question("What is the default port for HTTP?", opt1, 0);
+            String[] opt1 = {"3000", "33", "80", "12"};
+            Question q1 = new Question("What is the default port for HTTP?", opt1, 2);
             System.out.print(q1);
              
             String[] opt2 = {"Compiler", "JVM", "Interpreter", "MINGW"};
