@@ -1,0 +1,20 @@
+Which symbol is used to end a statement in C?|:|;|.|,|1
+Which function is used to print output in C?|cout|print()|printf()|scanf()|2
+Which operator is used for inheritance in C++?|extends|inherits|:|implements|2
+Which keyword is used to create an object in C++ dynamically?|create|malloc|new|object|2
+Which method is the entry point of a Java program?|run()|start()|main()|init()|2
+Which keyword is used to inherit a class in Java?|implements|extends|super|inherit|1
+What data structure follows First-In-First-Out order?|Stack|Queue|Tree|Graph|1
+What data structure follows Last-In-First-Out order?|Queue|Array|Stack|Heap|2
+Which data structure is used in Binary Search?|Linked List|Sorted Array|Queue|Stack|1
+What is the time complexity of linear search in the worst case?|O(1)|O(log n)|O(n)|O(n²)|2
+What is the time complexity of binary search?|O(n)|O(log n)|O(n log n)|O(n²)|1
+Which traversal visits Root, Left, Right?|Inorder|Postorder|Level Order|Preorder|3
+Which sorting algorithm repeatedly swaps adjacent elements?|Merge Sort|Quick Sort|Bubble Sort|Heap Sort|2
+What is the root node of a binary tree?|First node|Topmost node|Leaf node|Middle node|1
+Which algorithm is used to find the shortest path in a weighted graph?|DFS|BFS|Dijkstra's Algorithm|Merge Sort|2
+What does ML stand for?|Machine Logic|Machine Learning|Modern Learning|Mathematical Learning|1
+Which type of ML uses labeled data?|Unsupervised Learning|Reinforcement Learning|Supervised Learning|Deep Learning|2
+Which library is widely used for Machine Learning in Python?|NumPy|Pandas|Scikit-learn|Tkinter|2
+Which algorithm is commonly used for classification?|Linear Regression|K-Means|Decision Tree|Bubble Sort|2
+What does CPU stand for?|Central Process Unit|Central Processing Unit|Computer Processing Unit|Core Processing Unit|1

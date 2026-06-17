@@ -46,12 +46,12 @@ public class Question {
     @Override
     public String toString()
     {
-        String answerCorrect = sentence + "\n";
+        String q = sentence + "\n";
 
         for(int i = 0; i < options.length; i++)
         {
-            answerCorrect = answerCorrect + (char)('A'+i)+ ") "+options[i]+ "\n";
+            q = q + (char)('A'+i)+ ") "+options[i]+ "\n";
         }
-        return answerCorrect;
+        return q;
     }
 }   
