@@ -11,7 +11,7 @@ public class Client
     private static final String SERVER_ADD = "localhost";
     private static final int SERVER_PORT = 5000;
 
-    private static final int My_Answer = 1;
+    private static final int ANSWER = 1;
 
     public static void main(String[] args)
     {
@@ -45,8 +45,8 @@ public class Client
                    System.out.println("D) "+ parts[4]);   
                 }
             }
-            String answerMessage = "ANSWER:"+ My_Answer;
-            System.out.println("Sending answer: " + answerMessage+ " (index "+ My_Answer+ ")");
+            String answerMessage = "ANSWER:"+ ANSWER;
+            System.out.println("Sending answer: " + answerMessage+ " (index "+ ANSWER+ ")");
             out.println(answerMessage);
             out.flush();
             
