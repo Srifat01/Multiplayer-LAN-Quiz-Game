@@ -9,17 +9,17 @@ import java.net.Socket;
 
 public class Server
 {
-    private static final int PortNo = 5000; // hardcoded for now
-    private static String Test_Ques = "QUESTION:Which transport layer protocol is preferred for real-time video streaming or online multiplayer gaming where minimizing latency is more vital than ensuring every single packet arrives?|UDP|TLS|TCP|HTTP";
+    private static final int PORT = 5000; // hardcoded for now
+    private static final String TEST_QUESTION = "QUESTION:Which transport layer protocol is preferred for real-time video streaming or online multiplayer gaming where minimizing latency is more vital than ensuring every single packet arrives?|UDP|TLS|TCP|HTTP";
 
-    private static final int Ans_Index = 1; // correct answer for the question
+    private static final int ANS_INDEX = 1; // correct answer for the question
     public static void main(String[] args)
     {
         System.out.println("Server connection Checking-<<<");
-        System.out.println("Started on Port:"+ PortNo+"......");
+        System.out.println("Started on Port:"+ PORT+"......");
 
 
-    try(ServerSocket serverSoc = new ServerSocket(PortNo))
+    try(ServerSocket serverSoc = new ServerSocket(PORT))
     {
          System.out.println("Server is listening now------");
 
@@ -31,7 +31,7 @@ public class Server
             BufferedReader input = new BufferedReader(new InputStreamReader(clientSoc.getInputStream()));
           
              System.out.println("Sending Test Questions to the User----");
-             out.println(Test_Ques);
+             out.println(TEST_QUESTION);
              System.out.println("Waiting for Users Answer now----");
 
              String usrAns = input.readLine();
@@ -43,15 +43,15 @@ public class Server
                     try
                     {
                         int ansIndex = Integer.parseInt(cutAns.trim());
-                        if(ansIndex == Ans_Index)
+                        if(ansIndex == ANS_INDEX)
                         {
                             System.out.println("Correct Answer ");
                             out.println("RESULT: CORRECT");
                         }
                         else
                         {
-                            System.out.println("Incorrect Answer!!"+" Correct ANSWER: "+ Ans_Index);
-                            out.println("RESULT:WRONG CORRECT ANSWER:" + Ans_Index);
+                            System.out.println("Incorrect Answer!!"+" Correct ANSWER: "+ ANS_INDEX);
+                            out.println("RESULT:WRONG CORRECT ANSWER:" + ANS_INDEX);
                         }   
                     }
                     catch(NumberFormatException e)
