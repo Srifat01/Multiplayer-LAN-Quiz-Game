@@ -11,7 +11,7 @@ public class Client
     private static final String SERVER_ADD = "localhost";
     private static final int SERVER_PORT = 5000;
 
-    private static final int ANSWER = 1;
+    private static final int ANSWER = 3;
 
     public static void main(String[] args)
     {
@@ -56,11 +56,6 @@ public class Client
             if(result != null && result.equals("RESULT:CORRECT"))
             {
                 System.out.println("Your answer was Correct!! ");
-            }
-            else if(result != null && result.startsWith("RESULT:WRONG"))
-            {
-                String correctIdx = result.split(":").length > 2 ? result.split(":")[2] : "?";
-                System.out.println("Wrong answer, correct answer index: "+ correctIdx);
             }
             System.out.println(" Session complete. ");
         }

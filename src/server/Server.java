@@ -46,12 +46,12 @@ public class Server
                         if(ansIndex == ANS_INDEX)
                         {
                             System.out.println("Correct Answer ");
-                            out.println("RESULT: CORRECT");
+                            out.println("RESULT:CORRECT");
                         }
                         else
                         {
                             System.out.println("Incorrect Answer!!"+" Correct ANSWER: "+ ANS_INDEX);
-                            out.println("RESULT:WRONG CORRECT ANSWER:" + ANS_INDEX);
+                            out.println("RESULT:WRONG CORRECT_ANSWER-> " + ANS_INDEX);
                         }   
                     }
                     catch(NumberFormatException e)
