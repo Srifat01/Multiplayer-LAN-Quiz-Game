@@ -90,6 +90,80 @@ Player ID: 1, Name: Eagle, Score: 17
 
 ---
 
+## Week 3 — Java Sockets (Single Client Connection)
+
+### What was done
+Built the first working communication between two separate Java programs over a network socket. The server sends a question, the client receives and displays it, sends back an answer, and the server checks and responds with the result.
+
+### Files
+| File | Package | Purpose |
+|------|---------|---------|
+| `Server.java` | `server` | Starts ServerSocket on port 5000, accepts one client, sends question, checks answer |
+| `Client.java` | `client` | Connects to server, receives and displays question, sends answer, shows result |
+
+### Message protocol defined this week
+All messages are plain strings terminated by a newline. Both sides parse them by splitting on `:`.
+
+| Message | Direction | Meaning |
+|---------|-----------|---------|
+| `QUESTION:text\|A\|B\|C\|D` | Server → Client | Sends the question and 4 options |
+| `ANSWER:2` | Client → Server | Player's answer (index 0–3) |
+| `RESULT:CORRECT` | Server → Client | Answer was right |
+| `RESULT:WRONG:1` | Server → Client | Answer was wrong, correct index given |
+
+### Key concepts applied
+- **ServerSocket** — listens on port 5000, blocks on `accept()` until a client connects
+- **Socket** — client-side connection, initiated with server IP and port
+- **PrintWriter** — sends text to the other side
+- **BufferedReader** — reads text from the other side
+- **Try-with-resources** — both sockets close automatically when done
+- **Protocol design** — structured message format so both sides know how to parse what they receive
+
+### How to run
+Requires **two terminals open at the same time**.
+
+**Terminal 1 — start server first:**
+```bash
+javac server/Server.java
+java server.Server
+```
+
+**Terminal 2 — then run client:**
+```bash
+javac client/Client.java
+java client.Client
+```
+
+### Sample output
+
+**Server terminal:**
+```
+Server is running. Waiting for a client to connect...
+Client connected from: /127.0.0.1
+Sending question to client...
+Received from client: ANSWER:1
+Result: CORRECT! Client answered index 1
+Session complete. Closing connection.
+```
+
+**Client terminal:**
+```
+Connected to server!
+
+--- Question ---
+Which Java class accepts incoming connections?
+A) Socket
+B) ServerSocket
+C) DatagramSocket
+D) SocketChannel
+----------------
+Sending answer: ANSWER:1  (index 1)
+Server says: RESULT:CORRECT
+Your answer was CORRECT!
+```
+
+---
+
 ## Project Structure (so far)
 
 ```
@@ -100,8 +174,12 @@ Multiplayer-LAN-Quiz-Game/
 │   ├── model/
 │   │   ├── Player.java
 │   │   └── Question.java
-│   └── util/
-│       └── QuestionLoader.java
+│   ├── util/
+│   │   └── QuestionLoader.java
+│   ├── server/
+│   │   └── Server.java
+│   └── client/
+│       └── Client.java
 ├── out/              ← compiled .class files
 └── data/
     └── questions.txt
