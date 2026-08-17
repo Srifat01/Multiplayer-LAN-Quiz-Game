@@ -6,63 +6,79 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
 
-public class Client
-{
-    private static final String SERVER_ADD = "localhost";
-    private static final int SERVER_PORT = 5000;
+public class Client{
 
-    private static final int ANSWER = 3;
+    private static final String server_ipaddress = "localhost";
+    private static final int PORT = 5000;
 
-    public static void main(String[] args)
-    {
-        System.out.println("---LAN Quiz Game---Client side --");
-        System.out.println("Connection to server at "+ SERVER_ADD + ".....");
+    private static final String myname = "Nadya";
+    private static final int myanswer = 1; //correct index of answer
 
-        try (Socket socket = new Socket(SERVER_ADD, SERVER_PORT))
-        {
-            System.out.println("Connected to server ! ");
+    public static void main(String[] args) {
+
+        String name = (args.length > 0) ? args[0] : myname;
+
+        System.out.println("< LAN Quiz Game — Client (Week 4) >");
+        System.out.println("Connecting as [" + name + "] to " + server_ipaddress + ":" + PORT + "...");
+
+        try(Socket socket = new Socket(server_ipaddress, PORT)) {
+
+            System.out.println("Connected!\n");
 
             PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
-
             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
-            String response = in.readLine();
-            System.out.println("Received from server: "+ response);
-            
-            if(response != null && response.startsWith("QUESTION:"))
-            {
-                String body = response.substring(9);
+            out.println("NAME:" + name);
+            System.out.println("Sent: NAME:" + name);
+
+            String welcome = in.readLine();
+            System.out.println("Server: " + welcome);
+
+            String raw = in.readLine();
+            System.out.println("\nReceived: " + raw);
+
+            if (raw != null && raw.startsWith("QUESTION:")) {
+                String body = raw.substring(9);
                 String[] parts = body.split("\\|");
 
-                if(parts.length == 5)
-                {
-                   System.out.println("---Question----");
-                   System.out.println(parts[0]);
-
-                   System.out.println("A) "+ parts[1]);
-                   System.out.println("B) "+ parts[2]);
-                   System.out.println("C) "+ parts[3]);
-                   System.out.println("D) "+ parts[4]);   
+                if (parts.length == 5) {
+                    System.out.println("\n--- Question ---");
+                    System.out.println(parts[0]);
+                    System.out.println("A) " + parts[1]);
+                    System.out.println("B) " + parts[2]);
+                    System.out.println("C) " + parts[3]);
+                    System.out.println("D) " + parts[4]);
+                    System.out.println("----------------");
                 }
             }
-            String answerMessage = "ANSWER:"+ ANSWER;
-            System.out.println("Sending answer: " + answerMessage+ " (index "+ ANSWER+ ")");
-            out.println(answerMessage);
-            out.flush();
-            
+
+            String answerMsg = "ANSWER:" + myanswer;
+            System.out.println("\nSending: " + answerMsg);
+            out.println(answerMsg);
+
             String result = in.readLine();
-            System.out.println("Server says: "+ result);
+            System.out.println("Server result: " + result);
 
             if(result != null && result.equals("RESULT:CORRECT"))
             {
-                System.out.println("Your answer was Correct!! ");
+                System.out.println("[" + name + "] Correct answer!");
             }
-            System.out.println(" Session complete. ");
+            else if(result != null && result.startsWith("RESULT:WRONG"))
+            {
+                System.out.println("[" + name + "] Incorrect answer!");
+            }
+            else
+            {
+                System.out.println("[" + name + "] Server message: " + result);
+            }
+
+            System.out.println("\nSession complete");
+
         }
-        catch (IOException e)
+        catch(IOException e)
         {
-            System.out.println("Could not connect to server: "+ e.getMessage());
-            System.out.println("Make sure the server is running first. ");
+            System.out.println("Could not connect: " + e.getMessage());
+            System.out.println("Is the server running?");
         }
     }
 }

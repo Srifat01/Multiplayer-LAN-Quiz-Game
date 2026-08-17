@@ -1,79 +1,72 @@
 package server;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 
 public class Server
 {
-    private static final int PORT = 5000; // hardcoded for now
-    private static final String TEST_QUESTION = "QUESTION:Which transport layer protocol is preferred for real-time video streaming or online multiplayer gaming where minimizing latency is more vital than ensuring every single packet arrives?|UDP|TLS|TCP|HTTP";
 
-    private static final int ANS_INDEX = 1; // correct answer for the question
+    private static final int PORT = 5000;
+    private static final int max_usr = 8; 
+
+  
+    private static final List<ClientHandler> connected_usrs = Collections.synchronizedList(new ArrayList<>());
+    private static int clientcounter = 0;
+
     public static void main(String[] args)
     {
-        System.out.println("Server connection Checking-<<<");
-        System.out.println("Started on Port:"+ PORT+"......");
 
+        System.out.println("=== LAN Quiz Game — Server (Week 4) ===");
+        System.out.println("Starting server on port " + PORT + "...");
+        System.out.println("Waiting for clients. Max players: " + max_usr);
+        System.out.println("(Press Ctrl+C to stop the server)\n");
 
-    try(ServerSocket serverSoc = new ServerSocket(PORT))
-    {
-         System.out.println("Server is listening now------");
+        try(ServerSocket serverSocket = new ServerSocket(PORT))
+        {
 
-         Socket clientSoc = serverSoc.accept();
-         System.out.println("User connected IP: "+ clientSoc.getInetAddress());
+      
+            while(true)
+            {
 
-         PrintWriter out = new PrintWriter(clientSoc.getOutputStream(), true);
-            
-            BufferedReader input = new BufferedReader(new InputStreamReader(clientSoc.getInputStream()));
-          
-             System.out.println("Sending Test Questions to the User----");
-             out.println(TEST_QUESTION);
-             System.out.println("Waiting for Users Answer now----");
+              
+                Socket clientSocket = serverSocket.accept();
+                clientcounter++;
 
-             String usrAns = input.readLine();
-             System.out.println("Answer received: "+usrAns);
-
-             if(usrAns != null && usrAns.startsWith("ANSWER:"))
-             {
-                    String cutAns = usrAns.substring(7);
-                    try
-                    {
-                        int ansIndex = Integer.parseInt(cutAns.trim());
-                        if(ansIndex == ANS_INDEX)
-                        {
-                            System.out.println("Correct Answer ");
-                            out.println("RESULT:CORRECT");
-                        }
-                        else
-                        {
-                            System.out.println("Incorrect Answer!!"+" Correct ANSWER: "+ ANS_INDEX);
-                            out.println("RESULT:WRONG CORRECT_ANSWER-> " + ANS_INDEX);
-                        }   
-                    }
-                    catch(NumberFormatException e)
-                    {
-                        System.out.println("It shall be numerical integer" + cutAns);
-                        out.println("ERROR!!!");
-                    }
+              
+                if(connected_usrs.size() >= max_usr)
+                {
+                 System.out.println("Server full. Refusing client ID: " + clientcounter);
+                 clientSocket.close();
+                 continue;
              }
-             else
-             {
-                System.out.println("Invalid answer format-<< "+ usrAns);
-                out.println("Invalid answer format ");
-             }
-             System.out.println("...End of Session....");
-             clientSoc.close();
 
+                System.out.println("New client connecting... assigning ID " + clientcounter);
+
+                ClientHandler handler = new ClientHandler(clientSocket, clientcounter);
+                connected_usrs.add(handler);
+
+                Thread thread = new Thread(handler);
+                thread.setName("ClientThread-" + clientcounter);
+                thread.start();
+
+                System.out.println("Thread started for client " + clientcounter
+                        + ". Total connected: " + connected_usrs.size());
+            }
+
+        } catch(IOException e)
+        {
+            System.out.println("Server error: " + e.getMessage());
+        }
     }
-    catch(IOException e)
+
+    public static void removeClient(ClientHandler handler)
     {
-        System.out.println("Server error<<<<< "+ e.getMessage());
+        connected_usrs.remove(handler);
+        System.out.println("Client removed .> Total active connections: " + connected_usrs.size());
     }
-    System.out.println("Server is closed now-----");
-    }
-
 }
