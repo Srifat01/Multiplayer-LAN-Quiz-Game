@@ -16,7 +16,7 @@ public class Client{
 
     public static void main(String[] args) {
 
-        String name = (args.length > 0) ? args[0] : myname;
+        String name = (args.length > 0) ? args[0] : myname; // checks if the client name is given in the command line arguments if not then uses the default name.
 
         System.out.println("< LAN Quiz Game — Client (Week 4) >");
         System.out.println("Connecting as [" + name + "] to " + server_ipaddress + ":" + PORT + "...");
