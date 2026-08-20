@@ -6,101 +6,81 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
 
-// ClientHandler class implements runnbale so that instances of this class can be executed by separate threads
-public class ClientHandler implements Runnable
+public class ClientHandler implements Runnable // The runnable interface is implemented for handling multiple clients by assingning each client to a separate thread.
 {
-    private final Socket socket; // socket object to communicate with the client and server
+    private final Socket socket;
     private final int clientId;
-    private PrintWriter out; // sending data to the client
-    private BufferedReader in; // reading data from the client
+    private final GameManager gameManager;
+    private PrintWriter out;
+    private BufferedReader in;
     private String playerName;
 
-    private static final String Test_Question = "QUESTION:Which Java class accepts incoming connection or clients?|Socket|ServerSocket|DatagramSocket|SocketChannel";
-
-    private static final int Correct_Index = 1;
-
-    public ClientHandler(Socket socket, int clientId)
+    public ClientHandler(Socket socket, int clientId, GameManager gameManager)
     {
-           this.socket = socket; // sets the socket object to communicate with the client and server from ClientHandler constructor from server class
-           this.clientId = clientId;
-
+        this.socket = socket;
+        this.clientId = clientId;
+        this.gameManager = gameManager;
     }
+
     @Override
-    public void run() // separate thread is created for each client connection and the run method is called for each thread for runnable interface
-    {
-      System.out.println("[Thread->"+ clientId + "] Client connected form" + socket.getInetAddress());
-      try
-      {
-        out = new PrintWriter(socket.getOutputStream(), true); // sending data to the client
-        in = new BufferedReader(new InputStreamReader(socket.getInputStream())); // reading data from the client
-        
-        String nameMsg = in.readLine(); // reads the name of the player sent by the client reads until a newline character
-        if(nameMsg != null && nameMsg.startsWith("NAME:"))
+    public void run() 
+    {    
+        System.out.println("[Thread-" + clientId + "] Client connected from " + socket.getInetAddress());
+        try
         {
-            playerName = nameMsg.substring(5).trim();
+            out = new PrintWriter(socket.getOutputStream(), true); // auto-flush enabled for sending messages to the client.
+            in = new BufferedReader(new InputStreamReader(socket.getInputStream())); // reading the input stream from the client socket.
 
-        }
-        else
-        {
-            playerName = "Player" + clientId;
-        }
-        System.out.println("[Thread->" + clientId + "] Player registered: "+ playerName);
-        out.println("WELCOME:"+ playerName);
-
-        System.out.println("[Thread->" + clientId + "] Sending question to "+ playerName);
-        out.println(Test_Question);
-
-
-        String answer = in.readLine();
-        System.out.println("[Thread->" + clientId +"] "+ playerName + " answered: "+ answer);
-
-        if(answer != null && answer.startsWith("ANSWER:"))
-        {
-            try
+            String nameMsg = in.readLine(); // reades the players name that was sent from the client.
+            if(nameMsg != null && nameMsg.startsWith("NAME:"))
             {
-                int idx = Integer.parseInt(answer.substring(7).trim());
-                if(idx == Correct_Index)
-                {
-                    out.println("RESULT:CORRECT");
-                    System.out.println("[thread->" + clientId + "] "+ playerName + " CORRECT");
-
-                }
-                else
-                {
-                    out.println("RESULT:WRONG:" + Correct_Index);
-                    System.out.println("[Thread->" + clientId + "] " + playerName + "WRONG");
-                }
-
+                playerName = nameMsg.substring(5).trim();
             }
-            catch(NumberFormatException e)
+            else
             {
-                out.println("RESULT:ERROR");
+                playerName = "Player" + clientId;
             }
-           
-        }
-        else
-        {
-            out.println("RESULT:ERROR");
-        }
-       
-      }
-      catch(IOException e)
-      {
-          System.out.println("[Thread->" + clientId + "] Connection lost: " + e.getMessage());
+            System.out.println("[Thread-" + clientId + "] Player registered: " + playerName);
+            out.println("WELCOME:" + playerName); // sends a welcome message to the client with the player's name.
 
-      }
-      finally
-      {
-          closeSocket();
-      }
+            gameManager.registerPlayer(playerName, clientId, this); // registers the player with the GameManager, passing the player's name, client ID, its handler.
+
+            String line;
+            while((line = in.readLine()) != null) // reading inputs from the client.
+            {
+                if(line.startsWith("ANSWER:"))
+                {
+                    try
+                    {
+                        int idx = Integer.parseInt(line.substring(7).trim());
+                        System.out.println("[Thread-" + clientId + "] " + playerName + " answered: " + line);
+                        gameManager.submitAnswer(playerName, idx);
+                    }
+                    catch(NumberFormatException e)
+                    {
+                        System.out.println("[Thread-" + clientId + "] Bad answer from " + playerName + ": " + line);
+                    }
+                }
+            }
+        }
+        catch(IOException e) // if the socket is not created.
+        {
+            System.out.println("[Thread-" + clientId + "] Connection lost: " + e.getMessage());
+        }
+        finally
+        {
+            closeSocket(); // removes everything related to the client when the client disconnects.
+        }
     }
 
-    public void sendMessage(String message){
+    public synchronized void sendMessage(String message)
+    {
         if(out != null)
         {
-            out.println(message);
+            out.println(message); // if the output stream is not null, sends the message to the client.
         }
     }
+
     public String getPlayerName()
     {
         return playerName;
@@ -109,22 +89,24 @@ public class ClientHandler implements Runnable
     private void closeSocket()
     {
         try
-        {
-            if(socket != null && !socket.isClosed()) 
+        {   // if the socket is not null and not closed, closes the socket and prints a message to the console.
+            if(socket != null && !socket.isClosed())
             {
-               socket.close();
-               System.out.println("[Thread->" + clientId + "] Socket closed for " + (playerName != null ? playerName : "unknown"));
+                socket.close();
+                System.out.println("[Thread-" + clientId + "] Socket closed for " + (playerName != null ? playerName : "unknown"));
             }
         }
-        catch (IOException e)
+        catch(IOException e) // occurs when the socket is not closed properly.
         {
-            System.out.println("[Thread->" + clientId + "] Error closing socket: "+ e.getMessage());
-
+            System.out.println("[Thread-" + clientId + "] Error closing socket: " + e.getMessage());
         }
         finally
         {
-            Server.removeClient(this); // removes the client from the list of connected clients in the server class when the client disconnects or the socket is closed
+            Server.removeClient(this);
+            if(playerName != null)
+            {
+                gameManager.removePlayer(playerName);
+            }
         }
     }
-
 }
