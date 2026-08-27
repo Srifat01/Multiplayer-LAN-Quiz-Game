@@ -244,6 +244,104 @@ Session complete
 ```
  
 ---
+## Week 5 — Shared Game State (GameManager)
+
+### What was done
+Replaced each client's isolated one-question exchange with a single shared `GameManager` that every connected client plays against together — the same question, the same live scoreboard, and a round that only advances once everyone has answered.
+
+### Files
+| File | Package | Purpose |
+|------|---------|---------|
+| `GameManager.java` | `server` | New — central shared game state. Holds the question list, current question index, every player's score, and decides when a round advances or the game ends |
+| `ClientHandler.java` | `server` | Updated — no longer owns any game logic. Reads `NAME:`/`ANSWER:` off the socket and forwards everything to `GameManager`; exposes `sendMessage()` so `GameManager` can push data out at any time |
+| `Server.java` | `server` | Updated — loads `data/questions.txt` on startup and constructs one `GameManager`, shared across every `ClientHandler` it spawns |
+| `Client.java` | `client` | Updated — now loops reading server messages instead of a single exchange, since the server pushes several message types over the life of the game |
+
+### Message protocol additions this week
+| Message | Direction | Meaning |
+|---------|-----------|---------|
+| `SCORES:Alice=20,Bob=10` | Server → Client (broadcast) | Live scoreboard, sent after every round |
+| `END:Alice` | Server → Client (broadcast) | Sent once all questions are used up — names the winner |
+
+### Key concepts applied
+- **Shared mutable state across threads** — `GameManager` is one object that every `ClientHandler` thread calls into concurrently, instead of each thread keeping its own private state
+- **`synchronized` methods** — `registerPlayer()`, `submitAnswer()`, and `removePlayer()` are all synchronized on the `GameManager` instance, so two players answering at the same instant can't corrupt shared data or double-advance a round
+- **Broadcast pattern** — `GameManager` holds a `Map<String, ClientHandler>` so it can push a message to every connected client the moment a round ends, rather than waiting for each client to ask
+- **Round-gating logic** — a round only advances once `answeredThisRound.size()` reaches the number of connected players, tracked with a `Set<String>` that resets every round
+- **Reused identifiers instead of duplicated state** — `GameManager` reuses the `clientId` that `Server.java` already assigns per connection instead of keeping a second counter, so id assignment stays owned by one place
+
+### Bug found and fixed this week
+During a refactor to simplify `broadcastScores()`, the `formatQuestion()` method was accidentally deleted along with the class's closing brace, causing `cannot find symbol` compile errors. Fixed by restoring `formatQuestion()` and correcting the brace placement so it sits inside the class, before the final closing `}`.
+
+### How to run
+Requires **three or more terminals** — one server, one per player. Run all commands from the **project root** (not from inside `src/`), since `data/questions.txt` is loaded with a path relative to where `java` is launched.
+
+**Terminal 1 — start the server:**
+```bash
+javac -d out src/model/Player.java src/model/Question.java src/util/QuestionLoader.java src/server/GameManager.java src/server/ClientHandler.java src/server/Server.java src/client/Client.java src/main/Main.java
+java -cp out server.Server
+```
+
+**Terminal 2, 3, ... — one client per player:**
+```bash
+java -cp out client.Client Alice
+java -cp out client.Client Bob
+```
+
+The round only advances once **every** currently connected client has answered.
+
+### Sample output
+
+**Server terminal:**
+```
+=== LAN Quiz Game — Server (Week 5) ===
+Starting server on port 5000...
+Loaded 20 questions.
+Waiting for clients. Max players: 8
+(Press Ctrl+C to stop the server)
+New client connecting... assigning ID 1
+Thread started for client 1. Total connected: 1
+[Thread-1] Client connected from /127.0.0.1
+[Thread-1] Player registered: Alice
+[GameManager] Alice joined. Total players: 1
+New client connecting... assigning ID 2
+Thread started for client 2. Total connected: 2
+[Thread-2] Client connected from /127.0.0.1
+[Thread-2] Player registered: Bob
+[GameManager] Bob joined. Total players: 2
+```
+
+**Client terminal (Alice):**
+```
+< LAN Quiz Game — Client (Week 5) >
+Connecting as [Alice] to localhost:5000...
+Connected!
+Sent: NAME:Alice
+Server: WELCOME:Alice
+
+--- Question ---
+Which Java class accepts incoming connection or clients?
+0) Socket
+1) ServerSocket
+2) DatagramSocket
+3) SocketChannel
+----------------
+Your answer (0-3): 1
+Sent: ANSWER:1
+[Alice] Correct answer!
+>> Scoreboard: Alice=10,Bob=0
+
+--- Question ---
+...
+```
+
+Once every question has been used, both clients print:
+```
+Game over! Winner: Alice
+Session complete
+```
+
+---
  
 ## Project Structure (so far)
  
