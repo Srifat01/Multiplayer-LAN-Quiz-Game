@@ -1,5 +1,8 @@
 package server;
 
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.*;
 import model.Player;
 import model.Question;
@@ -100,7 +103,28 @@ public class GameManager
         String winner = getWinnerName(); // in case of tie, the first player to reach the score will be the winner.
         broadcastMessage("END:" + winner);
         System.out.println("[GameManager] Game over. Winner: " + winner);
+        saveHighScores(winner); // save the winner to the high score file.
     }
+
+private void saveHighScores(String winner)
+{
+    List<Player> ranked = new ArrayList<>(players.values());
+    ranked.sort((a, b) -> b.getScore() - a.getScore()); // highest score first
+
+    try(PrintWriter writer = new PrintWriter(new FileWriter("data/highscores.txt", true)))
+    {
+        writer.println("=== " + new Date() + " | Winner: " + winner + " ===");
+        for(Player p : ranked)
+        {
+            writer.println(p.getName() + "=" + p.getScore());
+        }
+        writer.println();
+    }
+    catch(IOException e)
+    {
+        System.out.println("[GameManager] Could not save high scores: " + e.getMessage());
+    }
+}
 
     private String getWinnerName() // comapres all player obj to get the winner if any.
     {

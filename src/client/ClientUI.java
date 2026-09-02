@@ -1,9 +1,6 @@
 package client;
 
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ComponentAdapter;
-import java.awt.event.ComponentEvent;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -13,330 +10,217 @@ import javax.swing.*;
 
 public class ClientUI extends JFrame
 {
-// server connection details
-private static final String SERVER_IP = "localhost";
-private static final int PORT = 5000;
+    private static final String SERVER_IP = "localhost";
+    private static final int PORT = 5000;
+    private static final int LOAD_DELAY = 1000; // ms before next question, so results are visible first
 
+    private static final Color GREEN = new Color(46, 139, 87);
+    private static final Color RED = new Color(200, 50, 50);
 
-// target dimensions for dynamic scaling
-private static final int BASE_WIDTH = 700;
-private static final int BASE_HEIGHT = 500;
+    private final CardLayout cards = new CardLayout(); // used so that no other screen is viswible except thisn one this one is used for both login in and game screen
+    private final JPanel cardPanel = new JPanel(cards);
 
-// brief delay before rendering the next question after feedback
-private static final int NEXT_QUESTION_DELAY_MS = 1200;
+    private PrintWriter out;
+    private String playerName;
+    private int lastClicked = -1;
 
-// visual styles for answer feedback
-private static final Color CORRECT_COLOR = new Color(210, 245, 220);
-private static final Color WRONG_COLOR = new Color(250, 210, 210);
-private static final Color CORRECT_TEXT = new Color(0, 120, 40);
-private static final Color WRONG_TEXT = new Color(180, 30, 30);
+    private JTextField nameField;
+    private JButton connectBtn;
+    private JLabel statusLabel;
 
-//network
-private Socket socket;
-private PrintWriter out;
-private String playerName;
+    private JLabel questionLabel, feedbackLabel;
+    private JButton[] answerBtns;
+    private Color defaultBtnColor;
+    private Scoreboard scoreboard;
 
-// screens
-private final CardLayout cardLayout = new CardLayout();
-private final JPanel cardPanel = new JPanel(cardLayout);
-private static final String LOGIN_CARD = "login";
-private static final String GAME_CARD = "game";
-
-//login screen cmp
-private JLabel loginTitleLabel;
-private JTextField nameField;
-private JButton connectButton;
-private JLabel loginStatusLabel;
-
-//screen cmp
-private JLabel questionLabel;
-private JButton[] answerButtons;
-private Color defaultButtonBg;
-private JLabel feedbackLabel;
-private JTextArea scoreboardArea;
-private JLabel scoreboardTitleLabel;
-private int lastClickedIndex = -1;
-
-public ClientUI()
-{
-    super("QuizHolic");
-    setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-    setSize(BASE_WIDTH + 50, BASE_HEIGHT + 50);
-    setMinimumSize(new Dimension(BASE_WIDTH, BASE_HEIGHT));
-    setLocationRelativeTo(null);
-
-    // register screens in the card layout container
-    cardPanel.add(buildLoginPanel(), LOGIN_CARD);
-    cardPanel.add(buildGamePanel(), GAME_CARD);
-    add(cardPanel);
-    cardLayout.show(cardPanel, LOGIN_CARD);
-
-    // dynamically adjust font sizes when window is resized
-    addComponentListener(new ComponentAdapter()
+    public ClientUI()
     {
-        @Override
-        public void componentResized(ComponentEvent e) { rescale(); }
-    });
-    rescale(); // applying the initial scale before any resize happens
-}
+        super("QuizHolic");
+        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setSize(750, 550);
+        setMinimumSize(new Dimension(700, 500));
+        setLocationRelativeTo(null);
 
-
-private void rescale()
-{
-    // Calculate uniform scale factor based on container dimensions
-    double scale = Math.min(getWidth() / (double) BASE_WIDTH, getHeight() / (double) BASE_HEIGHT);
-
-    // Clamp the zoom factor to prevent extreme text sizing
-    scale = Math.max(0.75, Math.min(scale, 2.5));
-
-    if(loginTitleLabel != null)
-    {
-        setScaledFont(loginTitleLabel, 18, scale, true);
-        setScaledFont(nameField, 16, scale, false);
-        setScaledFont(connectButton, 16, scale, true);
-        setScaledFont(loginStatusLabel, 13, scale, false);
+        cardPanel.add(buildLoginScreen(), "login");
+        cardPanel.add(buildGameScreen(), "game");
+        add(cardPanel);
+        cards.show(cardPanel, "login"); // stack the login screen over the game screen.
     }
-    if(questionLabel != null)
+
+    private JPanel buildLoginScreen()
     {
-        setScaledFont(questionLabel, 20, scale, true);
-        setScaledFont(feedbackLabel, 15, scale, true);
-        setScaledFont(scoreboardTitleLabel, 14, scale, true);
-        setScaledFont(scoreboardArea, 14, scale, false);
-        for (JButton btn : answerButtons) setScaledFont(btn, 16, scale, false);
-    }
-}
+        JPanel panel = new JPanel(new GridLayout(4, 1, 10, 10));
+        panel.setBorder(BorderFactory.createEmptyBorder(80, 100, 80, 100)); 
 
-private void setScaledFont(JComponent c, int baseSize, double scale, boolean bold)
-{
-    // Preserve monospace font for alignment in the scoreboard
-    String family = (c == scoreboardArea) ? "Monospaced" : "SansSerif";
-    c.setFont(new Font(family, bold ? Font.BOLD : Font.PLAIN, (int) (baseSize * scale)));
-}
-private JPanel buildLoginPanel()
-{
-    JPanel panel = new JPanel(new GridBagLayout());
-    GridBagConstraints gbc = new GridBagConstraints();
-    gbc.gridx = 0;
-    gbc.insets = new Insets(10, 60, 10, 60);
-    gbc.fill = GridBagConstraints.HORIZONTAL;
+        JLabel title= new JLabel("Enter your name to join QuizHolic", SwingConstants.CENTER);
+        nameField = new JTextField();
+        connectBtn =new JButton("Connect");
+        statusLabel = new JLabel(" ", SwingConstants.CENTER);
+        statusLabel.setForeground(RED);
 
-    loginTitleLabel = new JLabel("Enter your name to join QuizHolic", SwingConstants.CENTER);
-    nameField = new JTextField();
-    nameField.setPreferredSize(new Dimension(200, 36));
-    connectButton = new JButton("Connect");
-    connectButton.setPreferredSize(new Dimension(200, 40));
-    loginStatusLabel = new JLabel(" ", SwingConstants.CENTER);
-    loginStatusLabel.setForeground(WRONG_TEXT);
-
-    connectButton.addActionListener((ActionEvent e) ->
-    {
-        String name = nameField.getText().trim();
-        if (name.isEmpty())
+        connectBtn.addActionListener(e ->
         {
-            loginStatusLabel.setText("Please enter a name.");
-            return;
-        }
-        // Prevent duplicate clicks while connecting asynchronously
-        connectButton.setEnabled(false);
-        loginStatusLabel.setForeground(new Color(90, 90, 90));
-        loginStatusLabel.setText("Connecting...");
-        new Thread(() -> connectToServer(name)).start();
-    });
-
-    int row = 0;
-    for (JComponent c : new JComponent[]{loginTitleLabel, nameField, connectButton, loginStatusLabel})
-    {
-        gbc.gridy = row++;
-        panel.add(c, gbc);
-    }
-    return panel;
-}
-private JPanel buildGamePanel()
-{
-    JPanel panel = new JPanel(new BorderLayout(10, 10));
-    panel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
-
-    questionLabel = new JLabel("Waiting for the first question...", SwingConstants.CENTER);
-    panel.add(questionLabel, BorderLayout.NORTH);
-
-    JPanel buttonGrid = new JPanel(new GridLayout(2, 2, 10, 10));
-    answerButtons = new JButton[4];
-    for (int i = 0; i < 4; i++)
-    {
-        final int answerIndex = i;
-        JButton btn = new JButton("Option " + i);
-        btn.addActionListener((ActionEvent e) -> sendAnswer(answerIndex));
-        btn.setEnabled(false); // disabled until a question actually arrives
-        answerButtons[i] = btn;
-        buttonGrid.add(btn);
-    }
-    defaultButtonBg = answerButtons[0].getBackground(); // all 4 share the same default color
-    panel.add(buttonGrid, BorderLayout.CENTER);
-
-    feedbackLabel = new JLabel(" ", SwingConstants.CENTER);
-    scoreboardTitleLabel = new JLabel("Scoreboard");
-    scoreboardArea = new JTextArea(5, 20);
-    scoreboardArea.setEditable(false);
-
-    JPanel scorePanel = new JPanel(new BorderLayout(4, 4));
-    scorePanel.add(scoreboardTitleLabel, BorderLayout.NORTH);
-    scorePanel.add(new JScrollPane(scoreboardArea), BorderLayout.CENTER);
-
-    // group status feedback and live scores in the bottom section
-    JPanel bottom = new JPanel(new BorderLayout(5, 8));
-    bottom.add(feedbackLabel, BorderLayout.NORTH);
-    bottom.add(scorePanel, BorderLayout.CENTER);
-    panel.add(bottom, BorderLayout.SOUTH);
-
-    return panel;
-}
-
-private void connectToServer(String name)
-{
-    try
-    {
-        socket = new Socket(SERVER_IP, PORT);
-        out = new PrintWriter(socket.getOutputStream(), true);
-        BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-
-        playerName = name;
-        out.println("NAME:" + playerName);
-
-        // listen continuously for incoming network commands
-        String line;
-        while((line =in.readLine()) != null)
-        {
-            final String msg = line;
-            // dispatch updates back to the Swing event dispatch thread
-            SwingUtilities.invokeLater(() -> handleServerMessage(msg));
-        }
-    }
-    catch(IOException e)
-    {
-        SwingUtilities.invokeLater(() ->
-        {
-            loginStatusLabel.setForeground(WRONG_TEXT);
-            loginStatusLabel.setText("Could not connect: " + e.getMessage());
-            connectButton.setEnabled(true);
+            String name = nameField.getText().trim();
+            if(name.isEmpty())
+            { 
+                statusLabel.setText("Please enter a name."); return; 
+            }
+            connectBtn.setEnabled(false);
+            statusLabel.setForeground(Color.GRAY);
+            statusLabel.setText("Connecting...");
+            new Thread(() -> connectToServer(name)).start(); // connect to the server in a separate thread to avoid blocking the UI
         });
+
+        for(JComponent c : new JComponent[]{title, nameField, connectBtn, statusLabel}) // adding the components to the panel
+        {
+                panel.add(c);
+        }
+        return panel; // return the panel to the cardlayout.
     }
-}
-
-private void sendAnswer(int index)
-{
-    lastClickedIndex = index; // needed later by highlightLastClicked() when RESULT is here
-    if(out != null) out.println("ANSWER:" + index);
-    // lock choices to prevent double submission
-    setAnswerButtonsEnabled(false);
-    feedbackLabel.setForeground(new Color(90, 90, 90));
-    feedbackLabel.setText("Answer sent, waiting for other players...");
-}
-
-
-private void handleServerMessage(String line)
-{
-    // parse protocol prefix and route to the corresponding UI update
-    if(line.startsWith("WELCOME:"))
+    private JPanel buildGameScreen()
     {
-        cardLayout.show(cardPanel, GAME_CARD);
-        setTitle("QuizHolic — " + playerName);
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        panel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+
+        questionLabel = new JLabel("Waiting for the first question...", SwingConstants.CENTER);
+        questionLabel.setFont(questionLabel.getFont().deriveFont(Font.BOLD, 22f));
+        panel.add(questionLabel, BorderLayout.NORTH);
+
+        JPanel grid = new JPanel(new GridLayout(2, 2, 10, 10));
+        answerBtns = new JButton[4];
+        for(int i = 0; i < 4; i++)
+        {
+            int index = i;
+            JButton btn = new JButton("Option " + i);
+            btn.setFont(new Font("SansSerif", Font.PLAIN, 18));
+            btn.setEnabled(false);
+            btn.addActionListener(e -> sendAnswer(index)); // send the answer to the server when clicked
+            answerBtns[i] = btn; // store the button in the array for later reference
+            grid.add(btn); // add the button to the grid panel
+        }
+        defaultBtnColor = answerBtns[0].getBackground(); // store the default button color to reset later
+        panel.add(grid, BorderLayout.CENTER);
+
+        feedbackLabel = new JLabel(" ", SwingConstants.CENTER); 
+        scoreboard = new Scoreboard();
+
+        JPanel bottom = new JPanel(new BorderLayout(5, 8)); 
+        bottom.add(feedbackLabel, BorderLayout.NORTH);
+        bottom.add(scoreboard, BorderLayout.CENTER);
+        panel.add(bottom, BorderLayout.SOUTH);
+        return panel;
     }
-    else if(line.startsWith("QUESTION:")) scheduleNextQuestion(line.substring("QUESTION:".length()));
-    else if(line.startsWith("RESULT:")) showResult(line);
-    else if(line.startsWith("SCORES:")) updateScores(line.substring("SCORES:".length()));
-    else if(line.startsWith("END:")) showEndGame(line.substring("END:".length()));
-}
-private void scheduleNextQuestion(String body)
-{
-    // delay rendering new options so players can process the previous result
-    Timer timer = new Timer(NEXT_QUESTION_DELAY_MS, e -> updateQuestion(body));
-    timer.setRepeats(false);
-    timer.start();
-}
-
-private void updateQuestion(String body)
-{
-    String[] parts = body.split("\\|");
-    if (parts.length != 5) return;
-
-    questionLabel.setText("<html><div style='text-align:center;'>" + parts[0] + "</div></html>");
-    for(int i = 0; i < 4; i++)
+    private void connectToServer(String name)
     {
-        answerButtons[i].setText(parts[i + 1]);
-        answerButtons[i].setBackground(defaultButtonBg);
-    }
-    setAnswerButtonsEnabled(true);
-    feedbackLabel.setText(" ");
-    lastClickedIndex = -1;
-}
-
-private void showResult(String line)
-{
-    if(line.equals("RESULT:CORRECT"))
-    {
-        feedbackLabel.setForeground(CORRECT_TEXT);
-        feedbackLabel.setText("Correct!");
-        highlightLastClicked(true);
-    }
-    else if(line.startsWith("RESULT:WRONG:"))
-    {
-        feedbackLabel.setForeground(WRONG_TEXT);
-        feedbackLabel.setText("Wrong — " + line);
-        highlightLastClicked(false);
-
         try
         {
-            // highlight which answer was actually the correct one
-            int correctIndex = Integer.parseInt(line.substring("RESULT:WRONG:".length()).trim());
-            if(correctIndex >= 0 && correctIndex < answerButtons.length)
+            Socket socket = new Socket(SERVER_IP, PORT);
+            out = new PrintWriter(socket.getOutputStream(), true);
+            BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            playerName = name;
+            out.println("NAME:" + playerName);
+
+            String line;
+            while((line = in.readLine()) != null) // reads the message from the server, line by line, until the connection is closed
             {
-                answerButtons[correctIndex].setBackground(CORRECT_COLOR);
+                String msg = line;
+                SwingUtilities.invokeLater(() -> handleMessage(msg)); // handleMessage runs on the EDT, so it can safely update the UI.
             }
         }
-        catch(NumberFormatException ignored)
-        {
-           
+        catch(IOException e)
+        {   
+            SwingUtilities.invokeLater(() ->
+            {
+                statusLabel.setForeground(RED);
+                statusLabel.setText("Could not connect: " + e.getMessage());
+                connectBtn.setEnabled(true);
+            });
         }
     }
-}
 
-private void highlightLastClicked(boolean wasCorrect)
-{
-    if(lastClickedIndex >= 0 && lastClickedIndex < answerButtons.length)
+    private void sendAnswer(int index)
     {
-        answerButtons[lastClickedIndex].setBackground(wasCorrect ? CORRECT_COLOR : WRONG_COLOR);
+        lastClicked = index;
+        out.println("ANSWER:" + index); // sending answer to server
+        setButtonsEnabled(false);
+        feedbackLabel.setForeground(Color.GRAY);
+        feedbackLabel.setText("Answer sent, waiting for other players...");
     }
-}
-
-private void updateScores(String body)
-{
-    // rebuild score display from comma separated server data
-    StringBuilder sb = new StringBuilder();
-    for(String entry : body.split(","))
+    private void handleMessage(String line)
     {
-        if(!entry.isEmpty()) sb.append(entry).append("\n");
+        if(line.startsWith("WELCOME:"))
+        {
+            cards.show(cardPanel, "game");
+            setTitle("QuizHolic — " + playerName);
+        }
+        else if(line.startsWith("QUESTION:")) scheduleQuestion(line.substring(9));
+        else if(line.startsWith("RESULT:")) showResult(line);
+        else if(line.startsWith("SCORES:")) scoreboard.update(line.substring(7));
+        else if(line.startsWith("END:")) showEnd(line.substring(4));
     }
-    scoreboardArea.setText(sb.toString());
-}
-
-private void showEndGame(String winner)
-{
-    setAnswerButtonsEnabled(false);
-    questionLabel.setText("Game over!");
-    feedbackLabel.setForeground(CORRECT_TEXT);
-    feedbackLabel.setText("Winner: " + winner);
-}
-
-private void setAnswerButtonsEnabled(boolean enabled)
-{
-    for(JButton btn : answerButtons) btn.setEnabled(enabled);
-}
-
-public static void main(String[] args)
-{ 
-    SwingUtilities.invokeLater(() -> new ClientUI().setVisible(true));
-}
 
 
+    private void scheduleQuestion(String body) // delays the next question to 1000ms
+    {
+        Timer t = new Timer(LOAD_DELAY, e -> showQuestion(body));
+        t.setRepeats(false);
+        t.start();
+    }
 
+    private void showQuestion(String body)
+    {
+        String[] p = body.split("\\|");
+        if(p.length != 5) return;
+
+        questionLabel.setText("<html><div style='text-align:center;'>" + p[0] + "</div></html>"); // question is shown on the label used html tag to wrap the text and center it.
+        for(int i = 0; i < 4; i++) // shows the options on the buttons and resets their color to default
+        {
+            answerBtns[i].setText(p[i + 1]);
+            answerBtns[i].setBackground(defaultBtnColor);
+        }
+        // reset everything for the next question
+        setButtonsEnabled(true);
+        feedbackLabel.setText(" ");
+        lastClicked = -1;
+    }
+
+    private void showResult(String line)
+    {
+        boolean correct = line.equals("RESULT:CORRECT");
+        feedbackLabel.setForeground(correct ? GREEN : RED);
+        feedbackLabel.setText(correct ? "Correct!" : "Wrong — " + line); // shows the answer on the feedback label.
+
+        if(lastClicked >= 0) answerBtns[lastClicked].setBackground(correct ? GREEN : RED); // highlight the button that was clicked
+
+        if(!correct)
+        {
+            try
+            {
+                int rightIndex = Integer.parseInt(line.substring(line.lastIndexOf(':') + 1).trim());
+                answerBtns[rightIndex].setBackground(GREEN); // show which one WAS correct
+            }
+            catch(NumberFormatException ignored){}
+        }
+    }
+
+    private void showEnd(String winner) // winner is shown
+    {
+        setButtonsEnabled(false);
+        questionLabel.setText("Game over!");
+        feedbackLabel.setForeground(GREEN);
+        feedbackLabel.setText("Winner: " + winner);
+    }
+
+    private void setButtonsEnabled(boolean enabled)
+    {
+        for(JButton b : answerBtns)
+            {
+                b.setEnabled(enabled);
+            }
+    }
+
+    public static void main(String[] args)
+    {
+        SwingUtilities.invokeLater(() -> new ClientUI().setVisible(true));
+    }
 }
