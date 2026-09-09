@@ -9,6 +9,8 @@ import model.Question;
 
 public class GameManager
 {
+    private static final int ROUND_SECONDS = 15;
+
     private final List<Question> questions;
     private int currentQuestionIndex = 0;
 
@@ -20,6 +22,10 @@ public class GameManager
     private final Set<String> answeredThisRound = new HashSet<>(); // avoid answer duplication in the same round, store names of players who have answered this round.
 
     private boolean gameOver = false;
+    private boolean gameStarted = false; // stays false until the host starts the game
+
+    private Timer roundTimer;
+    private int secondsLeft;
 
     public GameManager(List<Question> questions)
     {
@@ -40,17 +46,32 @@ public class GameManager
             return; // stops when the game is over.
         }
 
-        if(currentQuestionIndex < questions.size())
+        if(gameStarted && currentQuestionIndex < questions.size())
         {
             handler.sendMessage(formatQuestion(questions.get(currentQuestionIndex))); // sending the current question to the newly joined player, in the format of network message to the handler then the socket will send it to the client.
         }
         broadcastScores(); // score display current.
     }
+
+    public synchronized void startGame()
+    {
+        if(gameStarted || questions.isEmpty()) return;
+
+        gameStarted = true;
+        System.out.println("[GameManager] Game started by host.");
+
+        if(currentQuestionIndex < questions.size())
+        {
+            broadcastMessage(formatQuestion(questions.get(currentQuestionIndex)));
+            startQuestionTimer();
+        }
+    }
+
     public synchronized void submitAnswer(String name, int answerIndex)
     {
-        if(gameOver || currentQuestionIndex >= questions.size())
+        if(!gameStarted || gameOver || currentQuestionIndex >= questions.size())
         {
-            return; // stops when the game is over.
+            return; // stops when the game is over or not started yet.
         }
 
         Player player = players.get(name); // takes the obj from the PlayerMap using the name to do score calculation and update the score of the player.
@@ -81,8 +102,10 @@ public class GameManager
             advanceRound();
         }
     }
+
     private void advanceRound()
     {
+        cancelTimer();
         broadcastScores();
         currentQuestionIndex++;
         answeredThisRound.clear(); // clearing the previous round, with a clean slate for next one.
@@ -90,6 +113,7 @@ public class GameManager
         if(currentQuestionIndex < questions.size())
         {
             broadcastMessage(formatQuestion(questions.get(currentQuestionIndex))); // sending the next question to all players in the format of network message to the handler then the socket will send it to the client.
+            startQuestionTimer();
         }
         else
         {
@@ -99,6 +123,7 @@ public class GameManager
 
     private void endGame()
     {
+        cancelTimer();
         gameOver = true; // was set false initially, now set to true to indicate the game is over.
         String winner = getWinnerName(); // in case of tie, the first player to reach the score will be the winner.
         broadcastMessage("END:" + winner);
@@ -106,25 +131,25 @@ public class GameManager
         saveHighScores(winner); // save the winner to the high score file.
     }
 
-private void saveHighScores(String winner)
-{
-    List<Player> ranked = new ArrayList<>(players.values());
-    ranked.sort((a, b) -> b.getScore() - a.getScore()); // highest score first
+    private void saveHighScores(String winner)
+    {
+        List<Player> ranked = new ArrayList<>(players.values());
+        ranked.sort((a, b) -> b.getScore() - a.getScore()); // highest score first
 
-    try(PrintWriter writer = new PrintWriter(new FileWriter("data/highscores.txt", true)))
-    {
-        writer.println("=== " + new Date() + " | Winner: " + winner + " ===");
-        for(Player p : ranked)
+        try(PrintWriter writer = new PrintWriter(new FileWriter("data/highscores.txt", true)))
         {
-            writer.println(p.getName() + "=" + p.getScore());
+            writer.println("=== " + new Date() + " | Winner: " + winner + " ===");
+            for(Player p : ranked)
+            {
+                writer.println(p.getName() + "=" + p.getScore());
+            }
+            writer.println();
         }
-        writer.println();
+        catch(IOException e)
+        {
+            System.out.println("[GameManager] Could not save high scores: " + e.getMessage());
+        }
     }
-    catch(IOException e)
-    {
-        System.out.println("[GameManager] Could not save high scores: " + e.getMessage());
-    }
-}
 
     private String getWinnerName() // comapres all player obj to get the winner if any.
     {
@@ -133,6 +158,7 @@ private void saveHighScores(String winner)
                 .map(Player::getName)
                 .orElse("NONE");
     }
+
     public synchronized void removePlayer(String name)
     {
         players.remove(name);
@@ -141,9 +167,44 @@ private void saveHighScores(String winner)
         System.out.println("[GameManager] " + name + " disconnected. Remaining: " + players.size());
 
         // after a player left if everyone has answered this round, advance to the next question.
-        if(!gameOver && !handlers.isEmpty() && answeredThisRound.size() >= handlers.size())
+        if(gameStarted && !gameOver && !handlers.isEmpty() && answeredThisRound.size() >= handlers.size())
         {
             advanceRound();
+        }
+    }
+
+    private void startQuestionTimer()
+    {
+        cancelTimer();
+        secondsLeft = ROUND_SECONDS;
+        roundTimer = new Timer();
+        roundTimer.scheduleAtFixedRate(new TimerTask()
+        {
+            @Override
+            public void run() { tick(); }
+        }, 1000, 1000);
+    }
+
+    private synchronized void tick()
+    {
+        if(gameOver || !gameStarted) { cancelTimer(); return; }
+
+        secondsLeft--;
+        broadcastMessage("TIME:" + secondsLeft);
+
+        if(secondsLeft <= 0)
+        {
+            cancelTimer();
+            advanceRound();
+        }
+    }
+
+    private void cancelTimer()
+    {
+        if(roundTimer != null)
+        {
+            roundTimer.cancel();
+            roundTimer = null;
         }
     }
 

@@ -6,6 +6,7 @@ import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Scanner;
 import model.Question;
 import util.QuestionLoader;
 
@@ -23,7 +24,7 @@ public class Server
     public static void main(String[] args)
     {
 
-        System.out.println("=== LAN Quiz Game — Server (Week 5) ===");
+        System.out.println("=== LAN Quiz Game — Server (Week 8) ===");
         System.out.println("Starting server on port " + PORT + "...");
 
         List<Question> questions; // list of questions to be loaded from the questions.txt file.
@@ -48,6 +49,23 @@ public class Server
         System.out.println("Loaded " + questions.size() + " questions.");
         System.out.println("Waiting for clients. Max players: " + max_usr);
         System.out.println("(Press Ctrl+C to stop the server)\n");
+
+        // thread to listen for console input while main thread blocks on accept()
+        Thread consoleThread = new Thread(() ->
+        {
+            Scanner scanner = new Scanner(System.in);
+            System.out.println("Type START and press Enter once players have joined.");
+            while(scanner.hasNextLine())
+            {
+                String command = scanner.nextLine().trim();
+                if(command.equalsIgnoreCase("START"))
+                {
+                    gameManager.startGame();
+                }
+            }
+        });
+        consoleThread.setDaemon(true);
+        consoleThread.start();
 
         // entry point for server waiting for requests from clients.
         try(ServerSocket serverSocket = new ServerSocket(PORT)) 
