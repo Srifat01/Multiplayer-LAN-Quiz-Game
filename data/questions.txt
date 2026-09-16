@@ -18,3 +18,23 @@ Which type of ML uses labeled data?|Unsupervised Learning|Reinforcement Learning
 Which library is widely used for Machine Learning in Python?|NumPy|Pandas|Scikit-learn|Tkinter|2
 Which algorithm is commonly used for classification?|Linear Regression|K-Means|Decision Tree|Bubble Sort|2
 What does CPU stand for?|Central Process Unit|Central Processing Unit|Computer Processing Unit|Core Processing Unit|1
+What keyword is used to inherit a class in Java?|extends|implements|inherits|super|0
+Which collection class does not allow duplicate elements?|ArrayList|HashSet|LinkedList|Vector|1
+What is the time complexity of binary search on a sorted array?|O(n)|O(n²)|O(log n)|O(1)|2
+In C, which function is used to allocate memory dynamically?|malloc|new|alloc|create|0
+Which data structure uses LIFO order?|Queue|Stack|Array|Tree|1
+What does OOP stand for?|Object Oriented Programming|Open Object Protocol|Ordered Object Process|Object Order Parsing|0
+Which keyword prevents a class from being subclassed in Java?|static|final|const|sealed|1
+What is the default value of a boolean field in Java?|true|false|0|null|1
+Which sorting algorithm has the best average case time complexity: O(n log n)?|Bubble Sort|Merge Sort|Insertion Sort|Selection Sort|1
+In C++, which operator is used to allocate memory dynamically?|malloc|alloc|new|create|2
+Which data structure is used to implement recursion internally?|Queue|Stack|Heap|Graph|1
+What is overfitting in machine learning?|Model performs well on both training and test data|Model performs well on training data but poorly on new data|Model fails to learn anything|Model has too few parameters|1
+Which of these is NOT a primitive data type in Java?|int|boolean|String|char|2
+What does the acronym API stand for?|Application Programming Interface|Advanced Program Instruction|Applied Protocol Integration|Automated Process Interface|0
+Which loop is guaranteed to execute at least once?|for|while|do-while|foreach|2
+In DSA, what does a hash table use to store key-value pairs quickly?|Sorting|Hash function|Linked list only|Binary search|1
+Which of these is a supervised learning algorithm?|K-Means Clustering|Linear Regression|PCA|DBSCAN|1
+What is the purpose of a constructor in Java?|To destroy an object|To initialize an object|To compare two objects|To clone an object|1
+Which access modifier makes a member accessible only within the same class?|public|protected|private|default|2
+In C, what does the '&' operator return when used before a variable?|The variable's value|The variable's memory address|A pointer's value|Nothing|1

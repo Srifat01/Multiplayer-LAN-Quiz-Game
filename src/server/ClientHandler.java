@@ -14,6 +14,7 @@ public class ClientHandler implements Runnable // The runnable interface is impl
     private PrintWriter out;
     private BufferedReader in;
     private String playerName;
+    private boolean registered = false; // WHY: so closeSocket() only tells GameManager to remove a player that was actually added
 
     public ClientHandler(Socket socket, int clientId, GameManager gameManager)
     {
@@ -32,18 +33,20 @@ public class ClientHandler implements Runnable // The runnable interface is impl
             in = new BufferedReader(new InputStreamReader(socket.getInputStream())); // reading the input stream from the client socket.
 
             String nameMsg = in.readLine(); // reades the players name that was sent from the client.
-            if(nameMsg != null && nameMsg.startsWith("NAME:"))
-            {
-                playerName = nameMsg.substring(5).trim();
-            }
-            else
-            {
-                playerName = "Player" + clientId;
-            }
-            System.out.println("[Thread-" + clientId + "] Player registered: " + playerName);
-            out.println("WELCOME:" + playerName); // sends a welcome message to the client with the player's name.
+            playerName = (nameMsg != null && nameMsg.startsWith("NAME:")) ? nameMsg.substring(5).trim() : "";
 
-            gameManager.registerPlayer(playerName, clientId, this); // registers the player with the GameManager, passing the player's name, client ID, its handler.
+            boolean accepted = gameManager.registerPlayer(playerName, clientId, this);
+            if(!accepted)
+            {
+                String reason = playerName.isEmpty() ? "Name cannot be empty" : "Name already taken";
+                sendMessage("REJECTED:" + reason);
+                System.out.println("[Thread-" + clientId + "] Registration rejected: " + reason);
+                return; // skip the read loop entirely 
+            }
+
+            registered = true;
+            System.out.println("[Thread-" + clientId + "] Player registered: " + playerName);
+            sendMessage("WELCOME:" + playerName); // sends a welcome message to the client with the player's name.
 
             String line;
             while((line = in.readLine()) != null) // reading inputs from the client.
@@ -93,7 +96,7 @@ public class ClientHandler implements Runnable // The runnable interface is impl
             if(socket != null && !socket.isClosed())
             {
                 socket.close();
-                System.out.println("[Thread-" + clientId + "] Socket closed for " + (playerName != null ? playerName : "unknown"));
+                System.out.println("[Thread-" + clientId + "] Socket closed for " + (playerName != null && !playerName.isEmpty() ? playerName : "unknown"));
             }
         }
         catch(IOException e) // occurs when the socket is not closed properly.
@@ -103,7 +106,7 @@ public class ClientHandler implements Runnable // The runnable interface is impl
         finally
         {
             Server.removeClient(this);
-            if(playerName != null)
+            if(registered)
             {
                 gameManager.removePlayer(playerName);
             }

@@ -14,7 +14,6 @@ public class GameManager
     private final List<Question> questions;
     private int currentQuestionIndex = 0;
 
-    
     private final Map<String, Player> players = new LinkedHashMap<>(); // instant name lookup about players using their name.
     
     private final Map<String, ClientHandler> handlers = new LinkedHashMap<>(); // instant name lookup about handlers using their name (as handlers contain the socket and connection info)
@@ -31,10 +30,18 @@ public class GameManager
     {
         this.questions = new ArrayList<>(questions); // taking the copy of questions.txt from the server by calling this constructor so that it has its own copy of the questions.
     }
-    
     // synchronized to avoid racing issues when multiple threads (ClientHandler) calls this method simultaneously.
-    public synchronized void registerPlayer(String name, int id, ClientHandler handler)
+    public synchronized boolean registerPlayer(String name, int id, ClientHandler handler)
     {
+        if(name == null || name.isEmpty())
+        {
+            return false;
+        }
+        if(players.containsKey(name))
+        {
+            return false; // name already taken by another connected player
+        }
+
         players.put(name, new Player(name, id)); // creating player obj and storing in playerMap, so that the player obj for the particular player can be later retreived and modified.
         handlers.put(name, handler); // storing the handler obj for the particular player in the handlerMap, so that the handler obj for the particular player can be later retreived and modified.
 
@@ -43,14 +50,15 @@ public class GameManager
         if(gameOver)
         {
             handler.sendMessage("END:" + getWinnerName());
-            return; // stops when the game is over.
+            return true; // stops when the game is over.
         }
 
         if(gameStarted && currentQuestionIndex < questions.size())
         {
-            handler.sendMessage(formatQuestion(questions.get(currentQuestionIndex))); // sending the current question to the newly joined player, in the format of network message to the handler then the socket will send it to the client.
+            handler.sendMessage(formatQuestion(questions.get(currentQuestionIndex))); // sending the current question to the newly joined player if the game has already started.
         }
         broadcastScores(); // score display current.
+        return true;
     }
 
     public synchronized void startGame()
@@ -78,7 +86,6 @@ public class GameManager
         ClientHandler handler = handlers.get(name); // takes the obj from the HandlerMap using the name to send the result of the answer to the player.
         if(player == null || handler == null) return;
 
-
         if(answeredThisRound.contains(name)) return; // avoid answer duplication in the same round
 
         Question current = questions.get(currentQuestionIndex); // getting the current question obj from the questions list.
@@ -97,7 +104,7 @@ public class GameManager
         answeredThisRound.add(name); // adding name of the player who answered now and avoid answer duplication in the same round.
 
         // Round only advances once EVERY currently connected player has answered
-        if (answeredThisRound.size() >= handlers.size())
+        if(answeredThisRound.size() >= handlers.size())
         {
             advanceRound();
         }
@@ -105,7 +112,7 @@ public class GameManager
 
     private void advanceRound()
     {
-        cancelTimer();
+        cancelTimer(); // previous round timer is canceled to avoid multiple timers running at the same time.
         broadcastScores();
         currentQuestionIndex++;
         answeredThisRound.clear(); // clearing the previous round, with a clean slate for next one.

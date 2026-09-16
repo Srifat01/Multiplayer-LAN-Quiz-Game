@@ -64,7 +64,7 @@ public class Server
                 }
             }
         });
-        consoleThread.setDaemon(true);
+        consoleThread.setDaemon(true); 
         consoleThread.start();
 
         // entry point for server waiting for requests from clients.

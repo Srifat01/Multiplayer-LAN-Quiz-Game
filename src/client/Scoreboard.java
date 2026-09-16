@@ -15,7 +15,9 @@ public class Scoreboard extends JPanel
     {
         setLayout(new BorderLayout(4, 4));
         titleLabel = new JLabel("Scoreboard");
+        titleLabel.setFont(new Font("SansSerif", Font.BOLD, 18));
         listArea = new JTextArea(5, 20);
+        listArea.setFont(new Font("SansSerif", Font.PLAIN, 20));
         listArea.setEditable(false);
         add(titleLabel, BorderLayout.NORTH);
         add(new JScrollPane(listArea), BorderLayout.CENTER);

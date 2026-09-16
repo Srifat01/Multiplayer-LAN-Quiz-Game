@@ -10,20 +10,19 @@ import java.util.Scanner;
 public class Client
 {
 
-    private static final String server_ipaddress = "localhost";
     private static final int PORT = 5000;
-
     private static final String myname = "Nadya";
 
     public static void main(String[] args)
     {
 
         String name = (args.length > 0) ? args[0] : myname;
+        String serverIp = (args.length > 1) ? args[1] : "localhost";
 
-        System.out.println("< LAN Quiz Game — Client (Week 5) >");
-        System.out.println("Connecting as [" + name + "] to " + server_ipaddress + ":" + PORT + "...");
+        System.out.println("< LAN Quiz Game — Client (Week 9) >");
+        System.out.println("Connecting as [" + name + "] to " + serverIp + ":" + PORT + "...");
 
-        try(Socket socket = new Socket(server_ipaddress, PORT);
+        try(Socket socket = new Socket(serverIp, PORT);
             PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             
@@ -35,13 +34,21 @@ public class Client
             out.println("NAME:" + name);
             System.out.println("Sent: NAME:" + name);
 
-            String welcome = in.readLine(); // reads the welcome message from the server with the player's name.
-            System.out.println("Server: " + welcome);
             String line;
             while((line = in.readLine()) != null) // taking the input from the server and processing it.
             {
 
-                if(line.startsWith("QUESTION:")) 
+                if(line.startsWith("REJECTED:"))
+                {
+                    System.out.println("Server rejected connection: " + line.substring(9));
+                    System.out.println("Try again with a different name.");
+                    return; // socket closes automatically via try-with-resources
+                }
+                else if(line.startsWith("WELCOME:"))
+                {
+                    System.out.println("Server: " + line); // reads the welcome message from the server with the player's name.
+                }
+                else if(line.startsWith("QUESTION:")) 
                 {
                     String body = line.substring(9);
                     String[] parts = body.split("\\|");
@@ -61,7 +68,12 @@ public class Client
                         out.println("ANSWER:" + answer);
                         System.out.println("Sent: ANSWER:" + answer);
                     }
-                }else if(line.startsWith("RESULT:"))
+                }
+                else if(line.startsWith("TIME:"))
+                {
+                    System.out.println(">> Time left: " + line.substring(5) + "s");
+                }
+                else if(line.startsWith("RESULT:"))
                 {   // if the server sends a result message, it checks if the result is correct or wrong and prints the appropriate message to the console.
                     if(line.equals("RESULT:CORRECT"))
                     {
@@ -94,6 +106,7 @@ public class Client
         catch(IOException e) 
         {
             System.out.println("Could not connect: " + e.getMessage()); // if the socket is not created, prints the error message to the console.
+            System.out.println("Is the server running, and is the IP address correct?");
         }
     }
 }

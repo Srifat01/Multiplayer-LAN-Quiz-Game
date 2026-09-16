@@ -1,0 +1,11 @@
+=== Wed Sep 09 10:02:37 GMT+06:00 2026 | Winner: ZARIF ===
+ZARIF=60
+
+=== Wed Sep 09 11:08:22 GMT+06:00 2026 | Winner: Davaid ===
+Davaid=60
+Apurbo=30
+
+=== Sat Sep 12 11:17:21 GMT+06:00 2026 | Winner: RIFAT ===
+RIFAT=280
+Tirtho=220
+
