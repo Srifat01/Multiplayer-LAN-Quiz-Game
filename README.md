@@ -21,6 +21,7 @@ Designed and implemented the two core data model classes that the entire game is
 - **Constructor validation** — `Question` throws `IllegalArgumentException` if options ≠ 4 or index out of 0–3 range
 - **Controlled score updates** — `addScore()` ignores negative values to prevent accidental score reduction
 - **toString()** override on both classes for readable console output
+
 ### How to run
 ```bash
 javac model/Player.java model/Question.java main/Main.java
@@ -68,6 +69,7 @@ Blank lines and lines starting with `#` are skipped.
 - **Checked exceptions** — `IOException` declared on `loadQuestions()` and handled in `Main`
 - **Fault-tolerant parsing** — a malformed line is skipped with a warning, loading continues
 - **ArrayList** — used over arrays because question count is unknown at compile time
+
 ### How to run
 ```bash
 javac model/Player.java model/Question.java util/QuestionLoader.java main/Main.java
@@ -116,6 +118,7 @@ All messages are plain strings terminated by a newline. Both sides parse them by
 - **BufferedReader** — reads text from the other side
 - **Try-with-resources** — both sockets close automatically when done
 - **Protocol design** — structured message format so both sides know how to parse what they receive
+
 ### How to run
 Requires **two terminals open at the same time**.
 
@@ -185,11 +188,13 @@ Upgraded the server from handling one client at a time to accepting several clie
 - **Thread-per-client model** — a blocking call like `readLine()` only blocks the thread that called it. While one client is sitting there deciding on an answer, the server keeps accepting and serving everyone else
 - **Synchronized client list** — `connected_usrs` is wrapped with `Collections.synchronizedList(...)` since multiple threads (the accept loop and each client's own thread on disconnect) touch it
 - **Max client cap** — new connections are refused once `connected_usrs.size()` reaches `max_usr` (8), instead of accepting unlimited clients
+
 ### Bugs found and fixed this week
 Two issues surfaced during testing with multiple clients, both now fixed:
 
 1. **Disconnected clients were never removed from the server's list.** `ClientHandler.closeSocket()` closed the socket but never called `Server.removeClient(this)`, so `connected_usrs` only ever grew, even for clients long gone. Fixed by calling `Server.removeClient(this)` in a `finally` block inside `closeSocket()`, so it runs on every exit path.
 2. **Client was sending its own name as the answer instead of an index.** `Client.java` sent `ANSWER:` followed by the player's name string instead of the numeric answer index, which made `Integer.parseInt()` fail on the server every time and always return `RESULT:ERROR`. Fixed by sending the actual answer index instead.
+
 ### How to run
 Requires **three or more terminals** to see the multithreading behavior — one server, two or more clients.
 
@@ -244,6 +249,7 @@ Session complete
 ```
 
 ---
+
 ## Week 5 — Shared Game State (GameManager)
 
 ### What was done
@@ -342,6 +348,7 @@ Session complete
 ```
 
 ---
+
 ## Week 6 — Java Swing UI (Client Side)
 
 ### What was done
@@ -488,7 +495,97 @@ START
 **Client window:** shows "Waiting for host to start..." until `START` is typed, then the first question appears along with a live "Time left: 15s" countdown that ticks down each second.
 
 ---
+## Week 9 — LAN Testing + Bug Fixes
 
+### What was done
+Took the game off a single machine and onto a real Wi-Fi network. The server address, which had been hardcoded to `localhost` since Week 3, became something entered at runtime instead. Server-side validation was added so an empty or duplicate player name is rejected rather than silently accepted. The question bank was expanded to meet the 30+ target, and the whole project was packaged into standalone runnable JAR files so a second device only needs one file, not the full source tree, to play.
+
+### Files
+| File | Package | Purpose |
+|------|---------|---------|
+| `GameManager.java` | `server` | Updated — `registerPlayer()` now returns `boolean` instead of `void`. Returns `false` for an empty name or a name already in use, `true` otherwise |
+| `ClientHandler.java` | `server` | Updated — checks `registerPlayer()`'s return value. On rejection, sends `REJECTED:<reason>` and closes the connection immediately, without ever entering the main read loop. Tracks a `registered` flag so `closeSocket()` only tells `GameManager` to remove a player that was actually added |
+| `Client.java` | `client` | Updated — the server address is now an optional second command-line argument (`java client.Client Alice 192.168.0.113`), defaulting to `localhost` if omitted. Handles `REJECTED:` by printing the reason and exiting |
+| `ClientUI.java` | `client` | Updated — the login screen gained a server IP text field (pre-filled with `localhost`, editable). Handles `REJECTED:` by showing the reason on the login screen and re-enabling the Connect button |
+| `data/questions.txt` | `data/` | Expanded from 20 to 40 questions — 20 new entries covering the same subject spread (Java, C, C++, DSA, ML) appended in the existing pipe-delimited format |
+
+### Message protocol additions this week
+| Message | Direction | Meaning |
+|---------|-----------|---------|
+| `REJECTED:<reason>` | Server → Client | Sent instead of `WELCOME:` when a name is empty or already taken; the connection is closed immediately afterward |
+
+### Key concepts applied
+- **Runtime configuration instead of hardcoded values** — the server address moved from a compiled-in constant to something read at connect time, so testing against a different machine never requires editing source or recompiling
+- **Changing a method's return type to communicate outcome** — `registerPlayer()` going from `void` to `boolean` is a small but real example of a method needing to report success/failure back to its caller, and the caller (`ClientHandler`) branching on that result instead of assuming success
+- **Defense in depth** — `ClientUI` already stops an empty name from being submitted client-side, but the server validates independently too, since the console client (`Client.java`) had no such check and a network message can always be malformed regardless of which client sent it
+- **Packaging compiled classes into a runnable JAR** — `jar cfe QuizHolic-Client.jar client.ClientUI -C out .` bundles every compiled class plus a manifest recording the entry point, so `java -jar QuizHolic-Client.jar` runs without needing `-cp` or the original folder structure
+- **The line between code and data at runtime** — `QuestionLoader` reads `data/questions.txt` as a plain file from disk, not as something bundled inside the JAR. This only became visible once packaging was actually attempted: the server JAR still needs a `data/` folder sitting next to it on whichever machine runs it
+
+### Issues found during real LAN testing
+Three separate problems surfaced only once testing moved off a single machine — worth recording since none of them were visible during any earlier week's local testing:
+
+1. **Connections from the second device were refused with no error until the host's firewall was opened.** Fedora blocks unsolicited incoming connections by default; `sudo firewall-cmd --add-port=5000/tcp` on the host machine resolved it.
+2. **The server JAR failed with `Failed to load questions: data/questions.txt` on the second device.** The `data/` folder had not been copied alongside `QuizHolic-Server.jar`, and `QuestionLoader`'s relative path meant the file was being looked for next to wherever the JAR was launched from, not anywhere else on disk.
+3. **The wrong JAR was copied to a client-only device**, launching a second, unwanted server instead of a client window. Checking a JAR's actual entry point with `unzip -p <file>.jar META-INF/MANIFEST.MF` (looking for the `Main-Class:` line) confirmed which file was which regardless of filename.
+
+None of these were code bugs — the game logic itself required no changes to fix any of them. All three were deployment/environment issues that simply don't exist when server and client run in terminals on the same machine, which is exactly why this week's real multi-device test mattered.
+
+### How to run
+
+**Find the host machine's LAN IP first:**
+```bash
+ip a        # Linux
+ipconfig    # Windows
+ifconfig    # Mac / older Linux
+```
+Look for the address under the active Wi-Fi interface (e.g. `192.168.0.113`).
+
+**Compile as usual, then package into JARs:**
+```bash
+javac -d out src/model/Player.java src/model/Question.java src/util/QuestionLoader.java src/server/GameManager.java src/server/ClientHandler.java src/server/Server.java src/client/Client.java src/client/Scoreboard.java src/client/ClientUI.java src/main/Main.java
+
+jar cfe QuizHolic-Server.jar server.Server -C out .
+jar cfe QuizHolic-Client.jar client.ClientUI -C out .
+```
+
+**On the host machine** — keep `data/` next to the server JAR:
+```bash
+java -jar QuizHolic-Server.jar
+```
+
+**On a second physical device, same Wi-Fi network** — only `QuizHolic-Client.jar` is needed:
+```bash
+java -jar QuizHolic-Client.jar
+```
+Type the host's LAN IP into the login screen's IP field instead of the default `localhost`.
+
+### Sample output
+
+**Server terminal (host machine):**
+```
+=== LAN Quiz Game — Server (Week 9) ===
+Starting server on port 5000...
+Loaded 40 questions.
+Waiting for clients. Max players: 8
+(Press Ctrl+C to stop the server)
+Type START and press Enter once players have joined.
+New client connecting... assigning ID 1
+Thread started for client 1. Total connected: 1
+[GameManager] Alice joined. Total players: 1
+[Thread-2] Registration rejected: Name already taken
+```
+
+**Second device, attempting a duplicate name:**
+```
+< LAN Quiz Game — Client (Week 9) >
+Connecting as [Alice] to 192.168.0.113:5000...
+Connected!
+Sent: NAME:Alice
+Server rejected connection: Name already taken
+Try again with a different name.
+```
+
+---
 ## Project Structure (so far)
 
 ```
@@ -509,10 +606,12 @@ Multiplayer-LAN-Quiz-Game/
 │       ├── Client.java
 │       ├── ClientUI.java
 │       └── Scoreboard.java
-├── out/              ← compiled .class files
-└── data/
-    ├── questions.txt
-    └── highscores.txt   ← created/appended to automatically after each game
+├── out/                        ← compiled .class files
+├── data/
+│   ├── questions.txt           ← 40 questions as of Week 9
+│   └── highscores.txt          ← created/appended to automatically after each game
+├── QuizHolic-Server.jar        ← packaged Week 9 — needs data/ alongside it to run
+└── QuizHolic-Client.jar        ← packaged Week 9 — fully self-contained, no data/ needed
 ```
 
 ---
