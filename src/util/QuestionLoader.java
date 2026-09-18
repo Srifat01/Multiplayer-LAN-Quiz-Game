@@ -26,7 +26,7 @@ public class QuestionLoader
             try
             {
                 Question q = parseLine(line);
-                questions.add(q);
+                questions.add(q); // adds the question to the list of questions.
             } 
             catch(IllegalArgumentException e)
             {
@@ -34,9 +34,9 @@ public class QuestionLoader
             }
             }
         }
-    return questions;
+    return questions; // returns to the GameManager class to load the questions and manage the game.
     }
-    private static Question parseLine(String line)
+    private static Question parseLine(String line) 
     {
         String [] sline = line.split("\\|");
         if(sline.length != 6)

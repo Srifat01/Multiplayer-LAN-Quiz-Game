@@ -96,12 +96,12 @@ public class ClientUI extends JFrame
                 statusLabel.setText("Please enter a server IP.");
                 return;
             }
-            connectBtn.setEnabled(false);
+            connectBtn.setEnabled(false); // this prevents the player from clicking the connect button multiple times while the connection is being established.
             statusLabel.setForeground(Color.GRAY);
             statusLabel.setText("Connecting...");
             new Thread(() -> connectToServer(name, ip)).start(); // connect to server in a separate thread
         });
-
+        // add components to the panel with proper spacing and alignment
         gbc.gridy = 0; panel.add(title, gbc);
         gbc.gridy = 1; panel.add(nameField, gbc);
         gbc.gridy = 2; panel.add(ipLabel, gbc);
@@ -139,8 +139,8 @@ public class ClientUI extends JFrame
             btn.setFont(new Font("SansSerif", Font.PLAIN, 18));
             btn.setEnabled(false);
             btn.addActionListener(e -> sendAnswer(index)); 
-            answerBtns[i] = btn; 
-            grid.add(btn); 
+            answerBtns[i] = btn;  // saving button references fir later use in showQuestion() and showResult()
+            grid.add(btn); // adds the button to the grid panel, which is a 2x2 layout for the answer buttons.
         }
         defaultBtnColor = answerBtns[0].getBackground(); 
         panel.add(grid, BorderLayout.CENTER);
@@ -148,7 +148,7 @@ public class ClientUI extends JFrame
         feedbackLabel = new JLabel(" ", SwingConstants.CENTER); 
         feedbackLabel.setFont(new Font("SansSerif", Font.BOLD, 16));
 
-        scoreboard = new Scoreboard();
+        scoreboard = new Scoreboard(); // update the scoreboard with the latest scores received from the server.
         JScrollPane scoreScrollPane = new JScrollPane(scoreboard);
         scoreScrollPane.setPreferredSize(new Dimension(0, 130)); // keeps scoreboard proportionally scaled
         scoreScrollPane.setBorder(BorderFactory.createTitledBorder("Live Scoreboard"));
@@ -158,23 +158,23 @@ public class ClientUI extends JFrame
         bottom.add(scoreScrollPane, BorderLayout.CENTER);
         panel.add(bottom, BorderLayout.SOUTH);
 
-        return panel;
+        return panel; // returns the game screen panel to be added to the card layout in the constructor.
     }
 
-    // ---------------- networking ----------------
+    //Networking>
 
     private void connectToServer(String name, String serverIp)
     {
         try
         {
-            Socket socket = new Socket(serverIp, PORT);
+            Socket socket = new Socket(serverIp, PORT); 
             out = new PrintWriter(socket.getOutputStream(), true);
-            BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream())); 
             playerName = name;
-            out.println("NAME:" + playerName);
+            out.println("NAME:" + playerName); 
 
             String line;
-            while ((line = in.readLine()) != null) 
+            while ((line = in.readLine()) != null) // read messages from the server until the connection is closed
             {
                 String msg = line;
                 SwingUtilities.invokeLater(() -> handleMessage(msg)); 
@@ -194,7 +194,7 @@ public class ClientUI extends JFrame
     private void sendAnswer(int index)
     {
         lastClicked = index;
-        out.println("ANSWER:" + index); 
+        out.println("ANSWER:" + index);  
         setButtonsEnabled(false);
         feedbackLabel.setForeground(Color.GRAY);
         feedbackLabel.setText("Answer sent, waiting for other players...");

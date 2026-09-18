@@ -25,7 +25,7 @@ public class Server
     {
 
         System.out.println("=== LAN Quiz Game — Server (Week 8) ===");
-        System.out.println("Starting server on port " + PORT + "...");
+        System.out.println("Starting server on IP 192.168.0.113:" + PORT + "...");
 
         List<Question> questions; // list of questions to be loaded from the questions.txt file.
         try

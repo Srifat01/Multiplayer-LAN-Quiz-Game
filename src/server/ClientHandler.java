@@ -14,7 +14,7 @@ public class ClientHandler implements Runnable // The runnable interface is impl
     private PrintWriter out;
     private BufferedReader in;
     private String playerName;
-    private boolean registered = false; // WHY: so closeSocket() only tells GameManager to remove a player that was actually added
+    private boolean registered = false; // so closeSocket() only tells GameManager to remove a player that was actually added
 
     public ClientHandler(Socket socket, int clientId, GameManager gameManager)
     {
@@ -35,7 +35,7 @@ public class ClientHandler implements Runnable // The runnable interface is impl
             String nameMsg = in.readLine(); // reades the players name that was sent from the client.
             playerName = (nameMsg != null && nameMsg.startsWith("NAME:")) ? nameMsg.substring(5).trim() : "";
 
-            boolean accepted = gameManager.registerPlayer(playerName, clientId, this);
+            boolean accepted = gameManager.registerPlayer(playerName, clientId, this); 
             if(!accepted)
             {
                 String reason = playerName.isEmpty() ? "Name cannot be empty" : "Name already taken";

@@ -92,9 +92,9 @@ public class GameManager
         boolean correct = current.Iscorrect(answerIndex);
 
         if(correct)
-        {   // if correct answer, add 10 to score and send results to the player.
+        {   // if correct answer, add 10 to score and send results to the player- via client handler.
             player.addScore(10);
-            handler.sendMessage("RESULT:CORRECT");
+            handler.sendMessage("RESULT:CORRECT"); 
         }
         else
         {
